@@ -39,6 +39,7 @@ header {
   background-color: #42b983;
   padding: 10px;
 }
+
 nav ul {
   list-style-type: none;
   padding: 0;
@@ -48,5 +49,11 @@ nav ul {
 nav li {
   cursor: pointer;
   color: white;
+}
+</style>
+
+<style>
+body {
+  font-family: "Roboto", sans-serif; /* Reemplaza 'Roboto' con el nombre de tu fuente */
 }
 </style>

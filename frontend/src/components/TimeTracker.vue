@@ -32,7 +32,7 @@
     >
       Stop
     </button>
-    <p>Elapsed Time: {{ elapsedTime }} seconds</p>
+    <p>Elapsed Time: {{ formattedElapsedTime }}</p>
   </div>
 </template>
 
@@ -45,9 +45,15 @@ export default {
       selectedProject: "", // Proyecto seleccionado
       projects: [], // Lista de proyectos
       timer: null, // Identificador del temporizador
-      elapsedTime: 0, // Tiempo transcurrido
+      elapsedTime: 0, // Tiempo transcurrido en segundos
       loggedTasks: [], // Lista de tareas registradas
     };
+  },
+  computed: {
+    // Formato para mostrar el tiempo transcurrido en horas, minutos y segundos
+    formattedElapsedTime() {
+      return this.formatTime(this.elapsedTime);
+    },
   },
   mounted() {
     // Recuperar proyectos y tareas desde localStorage
@@ -103,6 +109,15 @@ export default {
         this.taskName = "";
         this.elapsedTime = 0;
       }
+    },
+    // Método para formatear el tiempo en horas, minutos y segundos
+    formatTime(seconds) {
+      const hrs = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      return `${hrs.toString().padStart(2, "0")}:${mins
+        .toString()
+        .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
     },
   },
 };

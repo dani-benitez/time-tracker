@@ -4,7 +4,7 @@
     <ul>
       <li v-for="(task, index) in loggedTasks" :key="index">
         Project: {{ task.project }}, Task: {{ task.name }}, Time:
-        {{ task.time }} seconds
+        {{ formatTime(task.time) }}
       </li>
     </ul>
   </div>
@@ -26,6 +26,14 @@ export default {
       if (storedTasks) {
         this.loggedTasks = JSON.parse(storedTasks);
       }
+    },
+    formatTime(seconds) {
+      const hrs = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      return `${hrs.toString().padStart(2, "0")}:${mins
+        .toString()
+        .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
     },
   },
 };
