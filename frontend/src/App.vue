@@ -2,7 +2,7 @@
   <div id="app">
     <header>
       <nav>
-        <ul>
+        <ul class="flex justify-center">
           <li @click="currentView = 'TimeTracker'">Time Tracker</li>
           <li @click="currentView = 'TaskLogs'">Task Logs</li>
           <li @click="currentView = 'ProjectSummary'">Project Summary</li>
