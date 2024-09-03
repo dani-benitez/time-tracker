@@ -1,28 +1,24 @@
 <template>
-  <div class="flex items-start justify-center h-[calc(100vh-64px)] bg-gray-900 text-white">
+  <div class="flex items-center justify-center h-[calc(100vh-64px)] bg-gray-900 text-white">
     <!-- Columna Izquierda -->
     <div class="mr-10">
       <div class="mb-4">
         <label class="text-green-500 flex items-center">
-          Project:
-          <div v-if="projects.length === 0" class="ml-2">
-            Create project...
-          </div>
-          <div v-else class="relative inline-block text-left flex items-center ml-2">
+          Proyecto:<span class="ml-2"></span>
+          <div class="relative inline-block text-left flex items-center ml-2">
             <input 
               v-model="selectedProject" 
-              @keydown.enter="createOrSelectProject"
+              @blur="handleBlur"
               class="text-white bg-transparent border-b-2 border-gray-600 focus:border-green-500 outline-none cursor-pointer" 
               placeholder="Select or create project..." 
               @focus="showDropdown = true" 
-              @blur="hideDropdown"
             />
             <!-- Ícono de Chevron -->
-            <svg v-if="projects.length > 0" class="w-4 h-4 ml-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg class="w-4 h-4 ml-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
             <!-- Lista desplegable -->
-            <ul v-show="showDropdown" class="absolute left-0 mt-2 w-full bg-gray-800 border border-gray-600 rounded-md shadow-lg max-h-48 overflow-y-auto">
+            <ul v-show="showDropdown && filteredProjects.length > 0" class="absolute left-0 mt-2 w-full bg-gray-800 border border-gray-600 rounded-md shadow-lg max-h-48 overflow-y-auto">
               <li v-for="project in filteredProjects" :key="project.name" @click="selectProject(project)" class="px-4 py-2 hover:bg-gray-700 cursor-pointer">{{ project.name }}</li>
             </ul>
           </div>
@@ -31,7 +27,7 @@
 
       <div class="mb-4">
         <label class="text-green-500 flex items-center">
-          Task:
+          Tarea:
           <input 
             v-model="taskName" 
             class="text-white bg-transparent border-b-2 border-gray-600 focus:border-green-500 outline-none ml-2" 
@@ -41,7 +37,7 @@
       </div>
 
       <div class="mb-6">
-        <h3 class="text-green-500">Previous Tasks</h3>
+        <h3 class="text-green-500">Tareas anteriores</h3>
         <ul>
           <li 
             v-for="(task, index) in previousTasks" 
@@ -59,11 +55,11 @@
     </div>
 
     <!-- Columna Derecha - Temporizador -->
-    <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+    <div class="bg-gray-800 p-6 rounded-lg shadow-lg" style="width: 340px;">
       <div class="text-6xl mb-4">
-        <span :class="{ 'text-green-500': elapsedHours > 0 }">{{ formattedHours }}</span><span>:</span>
-        <span :class="{ 'text-blue-500': elapsedMinutes > 0 }">{{ formattedMinutes }}</span><span>:</span>
-        <span :class="{ 'text-red-500': elapsedSeconds > 0 }">{{ formattedSeconds }}</span>
+        <span :class="{ 'text-blue-500': elapsedHours > 0 }">{{ formattedHours }}</span><span>:</span>
+        <span :class="{ 'text-blue-300': elapsedMinutes > 0 }">{{ formattedMinutes }}</span><span>:</span>
+        <span :class="{ 'text-blue-100': elapsedSeconds > 0 }">{{ formattedSeconds }}</span>
       </div>
 
       <div class="grid grid-cols-12 gap-2 mb-4">
@@ -78,12 +74,12 @@
           @click="startTracking"
           :class="{'bg-green-600': canStartTimer, 'bg-gray-600': !canStartTimer }"
           class="px-4 py-2 rounded text-white">
-          Start
+          Comenzar
         </button>
         <button 
           @click="stopTracking" 
           class="bg-red-600 px-4 py-2 rounded text-white">
-          Stop
+          Detener
         </button>
       </div>
     </div>
@@ -100,7 +96,7 @@ export default {
       showDropdown: false,
       timer: null,
       elapsedTime: 0,
-      projects: [], // Aquí se almacenarán los proyectos con su estado
+      projects: [], 
       loggedTasks: []
     };
   },
@@ -128,23 +124,28 @@ export default {
     },
     filteredProjects() {
       return this.projects.filter(project => 
-        project.name && project.name.toLowerCase().includes(this.selectedProject.toLowerCase()) && project.status === 'in process'
+        project.name && project.status === 'in process'
       );
     }
   },
   methods: {
+    handleBlur() {
+      this.createOrSelectProject();
+      this.hideDropdown();
+    },
     createOrSelectProject() {
       const existingProject = this.projects.find(
         project => project.name && project.name.toLowerCase() === this.selectedProject.toLowerCase()
       );
 
-      if (!existingProject) {
+      if (!existingProject && this.selectedProject) {
         const newProject = { name: this.selectedProject, status: 'in process' };
         this.projects.push(newProject);
         this.saveProjects();
-
-        // Redirigir al componente de lista de proyectos para agregarlo allí también
-        this.$emit('addProject', newProject);
+        console.log('New project added:', newProject);
+      } else if (existingProject) {
+        this.selectedProject = existingProject.name;
+        console.log('Existing project selected:', existingProject);
       }
 
       this.showDropdown = false;
@@ -186,8 +187,10 @@ export default {
 
       this.taskName = '';
       this.elapsedTime = 0;
+      this.loadPreviousTasks();  
     },
     saveProjects() {
+      console.log('Saving projects:', this.projects);
       localStorage.setItem('projects', JSON.stringify(this.projects));
     },
     saveTasks() {
@@ -216,13 +219,13 @@ export default {
       return opacityLevels[index] || 'text-white opacity-20';
     },
     hourDotClass(n) {
-      return { 'bg-green-500': n <= this.elapsedHours, 'bg-gray-600': n > this.elapsedHours };
+      return { 'bg-blue-500': n <= this.elapsedHours, 'bg-gray-600': n > this.elapsedHours };
     },
     minuteDotClass(n) {
-      return { 'bg-blue-500': n <= this.elapsedMinutes / 5, 'bg-gray-600': n > this.elapsedMinutes / 5 };
+      return { 'bg-blue-300': n <= this.elapsedMinutes / 5, 'bg-gray-600': n > this.elapsedMinutes / 5 };
     },
     secondDotClass(n) {
-      return { 'bg-red-500': n <= this.elapsedSeconds / 5, 'bg-gray-600': n > this.elapsedSeconds / 5 };
+      return { 'bg-blue-100': n <= this.elapsedSeconds / 5, 'bg-gray-600': n > this.elapsedSeconds / 5 };
     },
     showToast(message) {
       alert(message);
@@ -234,3 +237,4 @@ export default {
   }
 };
 </script>
+  
