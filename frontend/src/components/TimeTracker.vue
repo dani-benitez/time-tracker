@@ -1,136 +1,230 @@
 <template>
-  <div>
-    <h1>Time Tracker</h1>
+  <div class="flex items-center justify-center h-[calc(100vh-64px)] bg-gray-900 text-white">
+    <!-- Columna Izquierda -->
+    <div class="mr-10">
+      <div class="mb-4">
+        <label class="text-green-500 flex items-center">
+          Project:<span class="ml-2"></span>
+          <div class="relative inline-block text-left flex items-center ml-2">
+            <input 
+              v-model="selectedProject" 
+              @keydown.enter="createOrSelectProject"
+              class="text-white bg-transparent border-b-2 border-gray-600 focus:border-green-500 outline-none cursor-pointer" 
+              placeholder="Select or create project..." 
+              @focus="showDropdown = true" 
+              @blur="hideDropdown"
+            />
+            <!-- Ícono de Chevron -->
+            <svg class="w-4 h-4 ml-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+            <!-- Lista desplegable -->
+            <ul v-show="showDropdown" class="absolute left-0 mt-2 w-full bg-gray-800 border border-gray-600 rounded-md shadow-lg max-h-48 overflow-y-auto">
+              <li v-for="project in filteredProjects" :key="project" @click="selectProject(project)" class="px-4 py-2 hover:bg-gray-700 cursor-pointer">{{ project }}</li>
+            </ul>
+          </div>
+        </label>
+      </div>
 
-    <!-- Selector de proyecto -->
-    <div>
-      <input
-        v-model="newProjectName"
-        type="text"
-        placeholder="Enter new project name"
-      />
-      <button @click="createProject">Create Project</button>
+      <div class="mb-4">
+        <label class="text-green-500 flex items-center">
+          Task:
+          <input 
+            v-model="taskName" 
+            class="text-white bg-transparent border-b-2 border-gray-600 focus:border-green-500 outline-none ml-2" 
+            placeholder="Enter task description..." 
+          />
+        </label>
+      </div>
+
+      <div class="mb-6">
+        <h3 class="text-green-500">Previous Tasks</h3>
+        <ul>
+          <li 
+            v-for="(task, index) in previousTasks" 
+            :key="index" 
+            :class="getTaskOpacityClass(index)"
+            class="mb-2"
+          >
+            {{ task.name }}
+          </li>
+          <li v-if="previousTasks.length === 0" class="text-gray-500">
+            Aún no hay registros.
+          </li>
+        </ul>
+      </div>
     </div>
 
-    <div>
-      <select v-model="selectedProject">
-        <option value="" disabled>Select a project</option>
-        <option v-for="project in projects" :key="project" :value="project">
-          {{ project }}
-        </option>
-      </select>
-    </div>
+    <!-- Columna Derecha - Temporizador -->
+    <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+      <div class="text-6xl mb-4">
+        <span :class="{ 'text-green-500': elapsedHours > 0 }">{{ formattedHours }}</span><span>:</span>
+        <span :class="{ 'text-blue-500': elapsedMinutes > 0 }">{{ formattedMinutes }}</span><span>:</span>
+        <span :class="{ 'text-red-500': elapsedSeconds > 0 }">{{ formattedSeconds }}</span>
+      </div>
 
-    <!-- Campo de texto para ingresar el nombre de la tarea -->
-    <input v-model="taskName" type="text" placeholder="Enter task name" />
-    <button @click="startTracking" :disabled="!selectedProject || !taskName">
-      Start
-    </button>
-    <button
-      @click="stopTracking"
-      :disabled="!selectedProject || !taskName || !timer"
-    >
-      Stop
-    </button>
-    <p>Elapsed Time: {{ formattedElapsedTime }}</p>
+      <div class="grid grid-cols-12 gap-2 mb-4">
+        <div v-for="n in 12" :key="'hours-' + n" class="h-2 w-2 rounded-full" :class="hourDotClass(n)"></div>
+        <div v-for="n in 12" :key="'minutes-' + n" class="h-2 w-2 rounded-full mt-1" :class="minuteDotClass(n)"></div>
+        <div v-for="n in 12" :key="'seconds-' + n" class="h-2 w-2 rounded-full mt-1" :class="secondDotClass(n)"></div>
+      </div>
+
+      <div class="flex justify-between">
+        <button 
+          :disabled="!canStartTimer" 
+          @click="startTracking"
+          :class="{'bg-green-600': canStartTimer, 'bg-gray-600': !canStartTimer }"
+          class="px-4 py-2 rounded text-white">
+          Start
+        </button>
+        <button 
+          @click="stopTracking" 
+          class="bg-red-600 px-4 py-2 rounded text-white">
+          Stop
+        </button>
+      </div>
+    </div>
   </div>
 </template>
+
 
 <script>
 export default {
   data() {
     return {
-      taskName: "", // Nombre de la tarea
-      newProjectName: "", // Nombre del nuevo proyecto
-      selectedProject: "", // Proyecto seleccionado
-      projects: [], // Lista de proyectos
-      timer: null, // Identificador del temporizador
-      elapsedTime: 0, // Tiempo transcurrido en segundos
-      loggedTasks: [], // Lista de tareas registradas
+      selectedProject: '',
+      taskName: '',
+      previousTasks: [],  // Aquí se almacenarán las tareas previas del proyecto seleccionado
+      showDropdown: false,
+      timer: null,
+      elapsedTime: 0,
+      projects: [], // Aquí se almacenarán los proyectos
+      loggedTasks: [] // Aquí se almacenarán las tareas registradas
     };
   },
   computed: {
-    // Formato para mostrar el tiempo transcurrido en horas, minutos y segundos
-    formattedElapsedTime() {
-      return this.formatTime(this.elapsedTime);
+    canStartTimer() {
+      return this.selectedProject && this.taskName;
     },
-  },
-  mounted() {
-    // Recuperar proyectos y tareas desde localStorage
-    this.loadFromLocalStorage();
+    elapsedHours() {
+      return Math.floor(this.elapsedTime / 3600);
+    },
+    elapsedMinutes() {
+      return Math.floor((this.elapsedTime % 3600) / 60);
+    },
+    elapsedSeconds() {
+      return this.elapsedTime % 60;
+    },
+    formattedHours() {
+      return String(this.elapsedHours).padStart(2, '0');
+    },
+    formattedMinutes() {
+      return String(this.elapsedMinutes).padStart(2, '0');
+    },
+    formattedSeconds() {
+      return String(this.elapsedSeconds).padStart(2, '0');
+    },
+    filteredProjects() {
+      return this.projects.filter(project => 
+        project.toLowerCase().includes(this.selectedProject.toLowerCase())
+      );
+    }
   },
   methods: {
-    loadFromLocalStorage() {
-      const storedProjects = localStorage.getItem("projects");
-      const storedTasks = localStorage.getItem("loggedTasks");
-
-      if (storedProjects) {
-        this.projects = JSON.parse(storedProjects);
+    createOrSelectProject() {
+      if (!this.projects.includes(this.selectedProject)) {
+        this.projects.push(this.selectedProject);
+        this.saveProjects();
       }
-      if (storedTasks) {
-        this.loggedTasks = JSON.parse(storedTasks);
-      }
+      this.showDropdown = false;
     },
-    saveToLocalStorage() {
-      localStorage.setItem("projects", JSON.stringify(this.projects));
-      localStorage.setItem("loggedTasks", JSON.stringify(this.loggedTasks));
+    selectProject(project) {
+      this.selectedProject = project;
+      this.showDropdown = false;
+      this.loadPreviousTasks();
     },
-    createProject() {
-      if (this.newProjectName && !this.projects.includes(this.newProjectName)) {
-        this.projects.push(this.newProjectName);
-        this.selectedProject = this.newProjectName;
-        this.newProjectName = "";
-        this.saveToLocalStorage();
-      }
+    hideDropdown() {
+      setTimeout(() => { this.showDropdown = false; }, 200); 
+    },
+    loadPreviousTasks() {
+      // Cargar las 5 tareas previas más recientes
+      this.previousTasks = this.loggedTasks.filter(task => task.project === this.selectedProject).slice(-5).reverse();
     },
     startTracking() {
-      if (!this.timer && this.selectedProject && this.taskName) {
+      if (!this.canStartTimer) {
+        this.showToast(this.selectedProject ? "Por favor escribe tu tarea" : "Por favor selecciona o crea un proyecto");
+        return;
+      }
+      if (!this.timer) {
         this.timer = setInterval(() => {
           this.elapsedTime += 1;
         }, 1000);
       }
     },
     stopTracking() {
-      if (this.timer) {
-        clearInterval(this.timer);
-        this.timer = null;
+      clearInterval(this.timer);
+      this.timer = null;
 
-        // Guardar la tarea registrada
-        if (this.taskName && this.elapsedTime > 0) {
-          this.loggedTasks.push({
-            project: this.selectedProject,
-            name: this.taskName,
-            time: this.elapsedTime,
-          });
-          this.saveToLocalStorage();
-        }
+      // Guardar la tarea registrada
+      if (this.taskName && this.elapsedTime > 0) {
+        this.loggedTasks.push({
+          project: this.selectedProject,
+          name: this.taskName,
+          time: this.elapsedTime
+        });
+        this.saveTasks();
+      }
 
-        // Reiniciar el nombre de la tarea y el tiempo transcurrido
-        this.taskName = "";
-        this.elapsedTime = 0;
+      // Reiniciar
+      this.taskName = '';
+      this.elapsedTime = 0;
+    },
+    saveProjects() {
+      localStorage.setItem('projects', JSON.stringify(this.projects));
+    },
+    saveTasks() {
+      localStorage.setItem('loggedTasks', JSON.stringify(this.loggedTasks));
+    },
+    loadProjects() {
+      const storedProjects = localStorage.getItem('projects');
+      if (storedProjects) {
+        this.projects = JSON.parse(storedProjects);
       }
     },
-    // Método para formatear el tiempo en horas, minutos y segundos
-    formatTime(seconds) {
-      const hrs = Math.floor(seconds / 3600);
-      const mins = Math.floor((seconds % 3600) / 60);
-      const secs = seconds % 60;
-      return `${hrs.toString().padStart(2, "0")}:${mins
-        .toString()
-        .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    loadTasks() {
+      const storedTasks = localStorage.getItem('loggedTasks');
+      if (storedTasks) {
+        this.loggedTasks = JSON.parse(storedTasks);
+      }
     },
+    getTaskOpacityClass(index) {
+      // Devuelve una clase de Tailwind CSS según la posición de la tarea
+      const opacityLevels = [
+        'text-white', // 100%
+        'text-white opacity-80', // 80%
+        'text-white opacity-60', // 60%
+        'text-white opacity-40', // 40%
+        'text-white opacity-20'  // 20%
+      ];
+      return opacityLevels[index] || 'text-white opacity-20'; // Fallback a 20% si hay más de 5 tareas
+    },
+    hourDotClass(n) {
+      return { 'bg-green-500': n <= this.elapsedHours, 'bg-gray-600': n > this.elapsedHours };
+    },
+    minuteDotClass(n) {
+      return { 'bg-blue-500': n <= this.elapsedMinutes / 5, 'bg-gray-600': n > this.elapsedMinutes / 5 };
+    },
+    secondDotClass(n) {
+      return { 'bg-red-500': n <= this.elapsedSeconds / 5, 'bg-gray-600': n > this.elapsedSeconds / 5 };
+    },
+    showToast(message) {
+      // Muestra una alerta tipo "toast" con el mensaje proporcionado.
+      alert(message); // Podrías implementar un toast más elegante en lugar de `alert`.
+    }
   },
+  mounted() {
+    this.loadProjects();
+    this.loadTasks();
+  }
 };
 </script>
-
-<style scoped>
-h1 {
-  color: #42b983;
-}
-input {
-  margin-bottom: 10px;
-}
-select {
-  margin: 10px 0;
-}
-</style>

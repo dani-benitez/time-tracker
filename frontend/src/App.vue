@@ -2,10 +2,28 @@
   <div id="app">
     <header>
       <nav>
-        <ul>
-          <li @click="currentView = 'TimeTracker'">Time Tracker</li>
-          <li @click="currentView = 'TaskLogs'">Task Logs</li>
-          <li @click="currentView = 'ProjectSummary'">Project Summary</li>
+        <ul class="flex justify-center space-x-6 bg-gray-800 py-4 text-white">
+          <li 
+            @click="currentView = 'TimeTracker'" 
+            :class="{ 'text-blue-500': currentView === 'TimeTracker' }" 
+            class="cursor-pointer hover:text-blue-400"
+          >
+            Time Tracker
+          </li>
+          <li 
+            @click="currentView = 'TaskLogs'" 
+            :class="{ 'text-blue-500': currentView === 'TaskLogs' }" 
+            class="cursor-pointer hover:text-blue-400"
+          >
+            Task Logs
+          </li>
+          <li 
+            @click="currentView = 'ProjectSummary'" 
+            :class="{ 'text-blue-500': currentView === 'ProjectSummary' }" 
+            class="cursor-pointer hover:text-blue-400"
+          >
+            Project Summary
+          </li>
         </ul>
       </nav>
     </header>
@@ -24,11 +42,11 @@ export default {
   components: {
     TimeTracker,
     TaskLogs,
-    ProjectSummary,
+    ProjectSummary
   },
   data() {
     return {
-      currentView: "TimeTracker",
+      currentView: 'TimeTracker',
     };
   },
 };
@@ -36,24 +54,18 @@ export default {
 
 <style scoped>
 header {
-  background-color: #42b983;
+  background-color: #1f2937; /* Tailwind's bg-gray-800 */
   padding: 10px;
 }
-
 nav ul {
   list-style-type: none;
   padding: 0;
+  margin: 0;
   display: flex;
   gap: 20px;
 }
 nav li {
   cursor: pointer;
-  color: white;
-}
-</style>
-
-<style>
-body {
-  font-family: "Roboto", sans-serif; /* Reemplaza 'Roboto' con el nombre de tu fuente */
+  transition: color 0.3s;
 }
 </style>
