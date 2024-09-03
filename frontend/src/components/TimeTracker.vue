@@ -1,11 +1,14 @@
 <template>
-  <div class="flex items-center justify-center h-[calc(100vh-64px)] bg-gray-900 text-white">
+  <div class="flex items-start justify-center h-[calc(100vh-64px)] bg-gray-900 text-white">
     <!-- Columna Izquierda -->
     <div class="mr-10">
       <div class="mb-4">
         <label class="text-green-500 flex items-center">
-          Project:<span class="ml-2"></span>
-          <div class="relative inline-block text-left flex items-center ml-2">
+          Project:
+          <div v-if="projects.length === 0" class="ml-2">
+            Create project...
+          </div>
+          <div v-else class="relative inline-block text-left flex items-center ml-2">
             <input 
               v-model="selectedProject" 
               @keydown.enter="createOrSelectProject"
@@ -15,12 +18,12 @@
               @blur="hideDropdown"
             />
             <!-- Ícono de Chevron -->
-            <svg class="w-4 h-4 ml-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg v-if="projects.length > 0" class="w-4 h-4 ml-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
             <!-- Lista desplegable -->
             <ul v-show="showDropdown" class="absolute left-0 mt-2 w-full bg-gray-800 border border-gray-600 rounded-md shadow-lg max-h-48 overflow-y-auto">
-              <li v-for="project in filteredProjects" :key="project" @click="selectProject(project)" class="px-4 py-2 hover:bg-gray-700 cursor-pointer">{{ project }}</li>
+              <li v-for="project in filteredProjects" :key="project.name" @click="selectProject(project)" class="px-4 py-2 hover:bg-gray-700 cursor-pointer">{{ project.name }}</li>
             </ul>
           </div>
         </label>
@@ -87,19 +90,18 @@
   </div>
 </template>
 
-
 <script>
 export default {
   data() {
     return {
       selectedProject: '',
       taskName: '',
-      previousTasks: [],  // Aquí se almacenarán las tareas previas del proyecto seleccionado
+      previousTasks: [],
       showDropdown: false,
       timer: null,
       elapsedTime: 0,
-      projects: [], // Aquí se almacenarán los proyectos
-      loggedTasks: [] // Aquí se almacenarán las tareas registradas
+      projects: [], // Aquí se almacenarán los proyectos con su estado
+      loggedTasks: []
     };
   },
   computed: {
@@ -126,20 +128,29 @@ export default {
     },
     filteredProjects() {
       return this.projects.filter(project => 
-        project.toLowerCase().includes(this.selectedProject.toLowerCase())
+        project.name && project.name.toLowerCase().includes(this.selectedProject.toLowerCase()) && project.status === 'in process'
       );
     }
   },
   methods: {
     createOrSelectProject() {
-      if (!this.projects.includes(this.selectedProject)) {
-        this.projects.push(this.selectedProject);
+      const existingProject = this.projects.find(
+        project => project.name && project.name.toLowerCase() === this.selectedProject.toLowerCase()
+      );
+
+      if (!existingProject) {
+        const newProject = { name: this.selectedProject, status: 'in process' };
+        this.projects.push(newProject);
         this.saveProjects();
+
+        // Redirigir al componente de lista de proyectos para agregarlo allí también
+        this.$emit('addProject', newProject);
       }
+
       this.showDropdown = false;
     },
     selectProject(project) {
-      this.selectedProject = project;
+      this.selectedProject = project.name;
       this.showDropdown = false;
       this.loadPreviousTasks();
     },
@@ -147,7 +158,6 @@ export default {
       setTimeout(() => { this.showDropdown = false; }, 200); 
     },
     loadPreviousTasks() {
-      // Cargar las 5 tareas previas más recientes
       this.previousTasks = this.loggedTasks.filter(task => task.project === this.selectedProject).slice(-5).reverse();
     },
     startTracking() {
@@ -165,7 +175,6 @@ export default {
       clearInterval(this.timer);
       this.timer = null;
 
-      // Guardar la tarea registrada
       if (this.taskName && this.elapsedTime > 0) {
         this.loggedTasks.push({
           project: this.selectedProject,
@@ -175,7 +184,6 @@ export default {
         this.saveTasks();
       }
 
-      // Reiniciar
       this.taskName = '';
       this.elapsedTime = 0;
     },
@@ -198,15 +206,14 @@ export default {
       }
     },
     getTaskOpacityClass(index) {
-      // Devuelve una clase de Tailwind CSS según la posición de la tarea
       const opacityLevels = [
-        'text-white', // 100%
-        'text-white opacity-80', // 80%
-        'text-white opacity-60', // 60%
-        'text-white opacity-40', // 40%
-        'text-white opacity-20'  // 20%
+        'text-white',
+        'text-white opacity-80',
+        'text-white opacity-60',
+        'text-white opacity-40',
+        'text-white opacity-20'
       ];
-      return opacityLevels[index] || 'text-white opacity-20'; // Fallback a 20% si hay más de 5 tareas
+      return opacityLevels[index] || 'text-white opacity-20';
     },
     hourDotClass(n) {
       return { 'bg-green-500': n <= this.elapsedHours, 'bg-gray-600': n > this.elapsedHours };
@@ -218,8 +225,7 @@ export default {
       return { 'bg-red-500': n <= this.elapsedSeconds / 5, 'bg-gray-600': n > this.elapsedSeconds / 5 };
     },
     showToast(message) {
-      // Muestra una alerta tipo "toast" con el mensaje proporcionado.
-      alert(message); // Podrías implementar un toast más elegante en lugar de `alert`.
+      alert(message);
     }
   },
   mounted() {
